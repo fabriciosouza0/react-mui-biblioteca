@@ -1,0 +1,35 @@
+# ===== Dependências =====
+node_modules/
+.pnp
+.pnp.js
+
+# ===== Build =====
+dist/
+dist-ssr/
+*.local
+*.tsbuildinfo
+coverage/
+
+# ===== Logs =====
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ===== Cache do editor/debug do Vite =====
+.vite/
+*.local
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ===== SO =====
+.DS_Store
+Thumbs.db
+desktop.ini

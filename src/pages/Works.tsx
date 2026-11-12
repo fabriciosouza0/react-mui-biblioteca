@@ -20,10 +20,12 @@ import WorkDependenciesDialog from '../components/WorkDependenciesDialog'
 import AuthorsFieldArray, { parseAuthors, AUTHOR_ROLE_LABELS } from '../components/AuthorsFieldArray'
 import { useWorks } from '../hooks/useWorks'
 import { useInstitution } from '../context/InstitutionContext'
+import { useConfirm } from '../context/ConfirmContext'
 import { MAX } from '../utils/validation'
 
 export default function Works() {
   const { selectedInstitution, loading: instLoading } = useInstitution()
+  const { prompt } = useConfirm()
   const institutionId = selectedInstitution?.id
 
   const {
@@ -67,10 +69,24 @@ export default function Works() {
         searchPlaceholder="Buscar por título, autor ou ISBN"
         action={
           <>
-            <Button variant="outlined" startIcon={<Search />} onClick={() => {
-              const isbn = window.prompt('Digite o ISBN para buscar e enriquecer:')
-              if (isbn) enrichFromIsbn(isbn)
-            }}>
+            <Button
+              variant="outlined"
+              startIcon={<Search />}
+              onClick={async () => {
+                await prompt({
+                  title: 'Buscar e enriquecer obra por ISBN',
+                  message: 'Informe o ISBN (10 ou 13 dígitos) para buscar e enriquecer os dados da obra:',
+                  inputLabel: 'ISBN',
+                  placeholder: 'Ex: 9788535902778',
+                  confirmLabel: 'Buscar',
+                  color: 'primary',
+                  required: true,
+                  onConfirm: async (isbn) => {
+                    await enrichFromIsbn(isbn)
+                  },
+                })
+              }}
+            >
               Buscar por ISBN
             </Button>
             <Button variant="contained" startIcon={<Add />} onClick={openNew}>

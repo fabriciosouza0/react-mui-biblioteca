@@ -17,6 +17,8 @@ import {
   Toolbar,
   Tooltip,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material'
 import {
   Add,
@@ -64,21 +66,33 @@ const items = [
 ]
 
 export default function Layout() {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { user, logout } = useAuth()
   const { resolvedMode, toggleMode } = useThemeMode()
   const { institutions, selectedInstitution, setSelectedInstitution, userRole } = useInstitution()
-  const [open, setOpen] = useState(() => {
+  const isGlobalAdmin = userRole === 'GLOBAL_ADMIN'
+  const { libraries, selectedLibrary, setSelectedLibrary } = useLibrary()
+
+  const [desktopOpen, setDesktopOpen] = useState(() => {
     const saved = window.localStorage.getItem('sidebar-open')
     return saved === null ? true : saved === '1'
   })
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   function toggle() {
-    setOpen((o) => {
-      const next = !o
-      window.localStorage.setItem('sidebar-open', next ? '1' : '0')
-      return next
-    })
+    if (isMobile) {
+      setMobileOpen((o) => !o)
+    } else {
+      setDesktopOpen((o) => {
+        const next = !o
+        window.localStorage.setItem('sidebar-open', next ? '1' : '0')
+        return next
+      })
+    }
   }
+
+  const isExpanded = isMobile ? true : desktopOpen
 
   const themeToggle = (
     <Tooltip title={resolvedMode === 'dark' ? 'Modo claro' : 'Modo escuro'}>
@@ -93,11 +107,11 @@ export default function Layout() {
     </Tooltip>
   )
 
-  const institutionSelect = (
-    <FormControl size="small" sx={{ minWidth: 200, ml: 1, flexShrink: 0 }}>
-      <InputLabel id="institution-label">Instituição</InputLabel>
+  const renderInstitutionSelect = (fullWidth = false) => (
+    <FormControl size="small" fullWidth={fullWidth} sx={{ minWidth: fullWidth ? 'auto' : 200, ml: fullWidth ? 0 : 1, flexShrink: 0 }}>
+      <InputLabel id={`institution-label${fullWidth ? '-mobile' : ''}`}>Instituição</InputLabel>
       <Select
-        labelId="institution-label"
+        labelId={`institution-label${fullWidth ? '-mobile' : ''}`}
         value={selectedInstitution?.id ?? ''}
         label="Instituição"
         onChange={(e) => {
@@ -115,14 +129,11 @@ export default function Layout() {
     </FormControl>
   )
 
-  const isGlobalAdmin = userRole === 'GLOBAL_ADMIN'
-  const { libraries, selectedLibrary, setSelectedLibrary } = useLibrary()
-
-  const librarySelect = (
-    <FormControl size="small" sx={{ minWidth: 180, ml: 1, flexShrink: 0 }}>
-      <InputLabel id="library-label">Filial / Balcão</InputLabel>
+  const renderLibrarySelect = (fullWidth = false) => (
+    <FormControl size="small" fullWidth={fullWidth} sx={{ minWidth: fullWidth ? 'auto' : 180, ml: fullWidth ? 0 : 1, flexShrink: 0 }}>
+      <InputLabel id={`library-label${fullWidth ? '-mobile' : ''}`}>Filial / Balcão</InputLabel>
       <Select
-        labelId="library-label"
+        labelId={`library-label${fullWidth ? '-mobile' : ''}`}
         value={selectedLibrary?.id ?? ''}
         label="Filial / Balcão"
         onChange={(e) => {
@@ -159,34 +170,41 @@ export default function Layout() {
       >
         <Toolbar sx={{ gap: 1 }}>
           <IconButton onClick={toggle} edge="start" aria-label="alternar menu" sx={{ color: 'text.secondary' }}>
-            {open ? <ChevronLeft /> : <Menu />}
+            {isMobile ? (mobileOpen ? <ChevronLeft /> : <Menu />) : (desktopOpen ? <ChevronLeft /> : <Menu />)}
           </IconButton>
           <Typography variant="h6" noWrap sx={{ flexGrow: 1, fontWeight: 600 }}>
             Sistema Bibliotecário
           </Typography>
-          {institutions.length > 0 && institutionSelect}
-          {institutions.length > 0 && libraries.length > 0 && librarySelect}
-          {isGlobalAdmin && (
-            <NavLink to="/institutions" style={{ textDecoration: 'none' }}>
-              <Tooltip title="Criar/gerenciar instituições">
-                <IconButton size="small" aria-label="instituições" sx={{ color: 'primary.main', mr: 0.5 }}>
-                  <Add />
-                </IconButton>
-              </Tooltip>
-            </NavLink>
-          )}
+
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
+            {institutions.length > 0 && renderInstitutionSelect(false)}
+            {institutions.length > 0 && libraries.length > 0 && renderLibrarySelect(false)}
+            {isGlobalAdmin && (
+              <NavLink to="/institutions" style={{ textDecoration: 'none' }}>
+                <Tooltip title="Criar/gerenciar instituições">
+                  <IconButton size="small" aria-label="instituições" sx={{ color: 'primary.main', ml: 0.5 }}>
+                    <Add />
+                  </IconButton>
+                </Tooltip>
+              </NavLink>
+            )}
+          </Box>
+
           {themeToggle}
         </Toolbar>
       </AppBar>
 
       <Drawer
-        variant="permanent"
+        variant={isMobile ? 'temporary' : 'permanent'}
+        open={isMobile ? mobileOpen : true}
+        onClose={() => setMobileOpen(false)}
+        ModalProps={{ keepMounted: true }}
         sx={{
-          width: open ? DRAWER_WIDTH : DRAWER_MIN_WIDTH,
+          width: isMobile ? 0 : (desktopOpen ? DRAWER_WIDTH : DRAWER_MIN_WIDTH),
           flexShrink: 0,
           whiteSpace: 'nowrap',
           '& .MuiDrawer-paper': {
-            width: open ? DRAWER_WIDTH : DRAWER_MIN_WIDTH,
+            width: isMobile ? DRAWER_WIDTH : (desktopOpen ? DRAWER_WIDTH : DRAWER_MIN_WIDTH),
             boxSizing: 'border-box',
             overflowX: 'hidden',
             bgcolor: 'background.paper',
@@ -202,8 +220,8 @@ export default function Layout() {
           },
         }}
       >
-        <Toolbar sx={{ px: open ? 2 : 0.5, justifyContent: open ? 'space-between' : 'center' }}>
-          {open && (
+        <Toolbar sx={{ px: isExpanded ? 2 : 0.5, justifyContent: isExpanded ? 'space-between' : 'center' }}>
+          {isExpanded && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, overflow: 'hidden', minWidth: 0 }}>
               <Box
                 sx={{
@@ -229,18 +247,39 @@ export default function Layout() {
         </Toolbar>
         <Divider />
 
+        {isMobile && institutions.length > 0 && (
+          <Box sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {renderInstitutionSelect(true)}
+            {libraries.length > 0 && renderLibrarySelect(true)}
+            {isGlobalAdmin && (
+              <NavLink to="/institutions" style={{ textDecoration: 'none' }} onClick={() => setMobileOpen(false)}>
+                <ListItemButton sx={{ borderRadius: 1, px: 1, py: 0.5, color: 'primary.main' }}>
+                  <ListItemIcon sx={{ minWidth: 28, color: 'primary.main' }}>
+                    <Add fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Instituições" primaryTypographyProps={{ fontSize: '0.8125rem', fontWeight: 600 }} />
+                </ListItemButton>
+              </NavLink>
+            )}
+            <Divider />
+          </Box>
+        )}
+
         <List sx={{ px: 1, pt: 1, flexGrow: 1 }}>
           {items.map((item) => (
-            <Tooltip key={item.to} title={item.label} placement="right" disableHoverListener={open}>
+            <Tooltip key={item.to} title={item.label} placement="right" disableHoverListener={isExpanded}>
               <ListItemButton
                 component={NavLink}
                 to={item.to}
                 end={item.to === '/'}
+                onClick={() => {
+                  if (isMobile) setMobileOpen(false)
+                }}
                 sx={{
                   mb: 0.5,
                   minHeight: 40,
-                  justifyContent: open ? 'initial' : 'center',
-                  px: open ? 1.5 : 1,
+                  justifyContent: isExpanded ? 'initial' : 'center',
+                  px: isExpanded ? 1.5 : 1,
                   '&.active': {
                     bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
                     color: 'primary.main',
@@ -249,10 +288,10 @@ export default function Layout() {
                   '&:hover': { bgcolor: (t) => alpha(t.palette.primary.main, 0.06) },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 0, mr: open ? 1.5 : 'auto', justifyContent: 'center' }}>
+                <ListItemIcon sx={{ minWidth: 0, mr: isExpanded ? 1.5 : 'auto', justifyContent: 'center' }}>
                   {item.icon}
                 </ListItemIcon>
-                {open && (
+                {isExpanded && (
                   <ListItemText
                     primary={item.label}
                     primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
@@ -265,7 +304,7 @@ export default function Layout() {
 
         <Divider />
         <Box sx={{ p: 1 }}>
-          {open && user && (
+          {isExpanded && user && (
             <Box sx={{ px: 1, py: 1, display: 'flex', alignItems: 'center', gap: 1.5, overflow: 'hidden' }}>
               <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: '0.875rem', flexShrink: 0 }}>
                 {user.nome.charAt(0)}
@@ -284,22 +323,22 @@ export default function Layout() {
             onClick={logout}
             sx={{
               minHeight: 40,
-              justifyContent: open ? 'initial' : 'center',
-              px: open ? 1.5 : 1,
+              justifyContent: isExpanded ? 'initial' : 'center',
+              px: isExpanded ? 1.5 : 1,
               color: 'text.secondary',
             }}
           >
-            <ListItemIcon sx={{ minWidth: 0, mr: open ? 1.5 : 'auto', justifyContent: 'center', color: 'inherit' }}>
+            <ListItemIcon sx={{ minWidth: 0, mr: isExpanded ? 1.5 : 'auto', justifyContent: 'center', color: 'inherit' }}>
               <Logout />
             </ListItemIcon>
-            {open && (
+            {isExpanded && (
               <ListItemText primary="Sair" primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }} />
             )}
           </ListItemButton>
         </Box>
       </Drawer>
 
-      <Box component="main" sx={{ flexGrow: 1, p: 3, minWidth: 0 }}>
+      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, sm: 3 }, minWidth: 0 }}>
         <Toolbar />
         <Outlet />
       </Box>

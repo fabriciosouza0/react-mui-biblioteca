@@ -42,7 +42,7 @@ export interface UseFinesResult {
 
 export function useFines(institutionId?: string): UseFinesResult {
   const { notifyError } = useError()
-  const { confirm } = useConfirm()
+  const { confirm, prompt } = useConfirm()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(20)
@@ -164,30 +164,28 @@ export function useFines(institutionId?: string): UseFinesResult {
   }
 
   async function waiveFine(fine: Fine) {
-    const reason = window.prompt('Motivo da isenção:', '')
-    if (!reason) return
-
-    await confirm({
+    await prompt({
       title: 'Isentar multa',
-      message: `Isentar multa de ${formatCents(fine.balanceCents)}? Motivo: ${reason}`,
+      message: `Deseja isentar a multa de ${formatCents(fine.balanceCents)}?`,
+      inputLabel: 'Motivo da isenção',
       confirmLabel: 'Isentar',
       color: 'primary',
-      onConfirm: async () => {
+      required: true,
+      onConfirm: async (reason) => {
         await waiveMutation.mutateAsync({ fineId: fine.id, reason })
       },
     })
   }
 
   async function writeOffFine(fine: Fine) {
-    const reason = window.prompt('Motivo da baixa contábil:', '')
-    if (!reason) return
-
-    await confirm({
+    await prompt({
       title: 'Baixa contábil',
-      message: `Dar baixa na multa de ${formatCents(fine.balanceCents)}? Motivo: ${reason}`,
+      message: `Deseja dar baixa contábil na multa de ${formatCents(fine.balanceCents)}?`,
+      inputLabel: 'Motivo da baixa contábil',
       confirmLabel: 'Baixar',
       color: 'error',
-      onConfirm: async () => {
+      required: true,
+      onConfirm: async (reason) => {
         await writeOffMutation.mutateAsync({ fineId: fine.id, reason })
       },
     })
